@@ -234,4 +234,4 @@ with tab2:
                     full_img_prompt = f"{img_prompt}, {variation}, {selected_style_text}"
                     
                     result = client.predict(
-                        prompt=full_img_prompt,
+                        prompt=full_img_prompt,)
