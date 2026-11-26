@@ -44,6 +44,7 @@ w, h = dims_map[rat]
 def generate_free_scene(prompt_text, width, height, seed):
     encoded = urllib.parse.quote(prompt_text)
     full_url = "https://pollinations.ai" + encoded + f"?width={width}&height={height}&seed={seed}&nologo=true&model=flux"
+
     resp = requests.get(full_url, timeout=60)
     resp.raise_for_status()
     return Image.open(io.BytesIO(resp.content)).convert("RGB")
