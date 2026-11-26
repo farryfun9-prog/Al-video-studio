@@ -7,8 +7,8 @@ from datetime import datetime
 from moviepy.editor import VideoClip, concatenate_videoclips
 
 st.set_page_config(page_title="AI Disney Studio Unlimited", page_icon="👑", layout="centered")
-st.title("👑 AI Disney & Cartoon Studio (100% Unlimited Free)")
-st.write("Pixar/Disney 3D Cartoon aur **5s se 60s** tak ki videos banayein — **Bina Kisi Limit ya Error ke!**")
+st.title("👑 AI Disney & Cartoon Studio Pro")
+st.write("Pixar/Disney 3D Cartoon aur **5s se 60s** tak ki videos banayein — **100% Unlimited & Free!**")
 
 if "video_library" not in st.session_state:
     st.session_state.video_library = []
@@ -38,18 +38,17 @@ dims_map = {"9:16 (TikTok / Reels)": (576, 1024), "16:9 (YouTube)": (1024, 576),
 angles = ["wide magical establishing shot", "close up portrait shot, smiling", "medium shot, glowing sparkles around", "dramatic angle, enchanted background"]
 
 num_scenes = clips_map[dur]
-sec_lbl = dur.split(" ")
+sec_lbl = dur.split(" ")[0]
 w, h = dims_map[rat]
 
-url = f"https://pollinations.ai{encoded}?width={width}&height={height}&seed={seed}&nologo=true&model=flux"
 def generate_free_scene(prompt_text, width, height, seed):
     encoded = urllib.parse.quote(prompt_text)
-    url = f"https://pollinations.ai{encoded}?width={width}&height={height}&seed={seed}&nologo=true&model=flux"
-    resp = requests.get(url, timeout=60)
+    base_url = "https://pollinations.ai"
+    full_url = f"{base_url}{encoded}?width={width}&height={height}&seed={seed}&nologo=true&model=flux"
+    resp = requests.get(full_url, timeout=60)
     resp.raise_for_status()
     return Image.open(io.BytesIO(resp.content)).convert("RGB")
 
-# Smooth Cinema Camera Motion Engine
 def create_motion_clip(pil_img, duration=5.0, mode=0):
     base = pil_img.resize((int(w * 1.18), int(h * 1.18)), Image.Resampling.LANCZOS)
     arr = np.array(base)
@@ -58,17 +57,17 @@ def create_motion_clip(pil_img, duration=5.0, mode=0):
 
     def make_frame(t):
         p = t / duration
-        if mode % 3 == 0:  # Smooth Zoom In
+        if mode % 3 == 0:
             zoom = 1.0 + 0.14 * p
             nw, nh = int(bw / zoom), int(bh / zoom)
             x1, y1 = (bw - nw) // 2, (bh - nh) // 2
             crop = arr[y1:y1+nh, x1:x1+nw]
             return np.array(Image.fromarray(crop).resize((w, h), Image.Resampling.BILINEAR))
-        elif mode % 3 == 1:  # Smooth Pan
+        elif mode % 3 == 1:
             dx = int(max_dx * p)
             dy = max_dy // 2
             return arr[dy:dy+h, dx:dx+w]
-        else:  # Smooth Zoom Out
+        else:
             zoom = 1.14 - 0.14 * p
             nw, nh = int(bw / zoom), int(bh / zoom)
             x1, y1 = (bw - nw) // 2, (bh - nh) // 2
