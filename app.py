@@ -1,16 +1,14 @@
 import streamlit as st
-from huggingface_hub import InferenceClient
+import requests
 from PIL import Image
 import numpy as np
-import tempfile, os
+import tempfile, os, io, urllib.parse
 from datetime import datetime
 from moviepy.editor import VideoClip, concatenate_videoclips
 
 st.set_page_config(page_title="AI Disney Studio Unlimited", page_icon="👑", layout="centered")
-st.title("👑 AI Disney & Cartoon Studio (Unlimited Free)")
-st.write("Pixar/Disney 3D Cartoon aur **5s se 60s** tak ki videos banayein — **100% Unlimited & Free!**")
-
-API_KEY = os.environ.get("HF_TOKEN") or st.secrets.get("HF_TOKEN", "")
+st.title("👑 AI Disney & Cartoon Studio (100% Unlimited Free)")
+st.write("Pixar/Disney 3D Cartoon aur **5s se 60s** tak ki videos banayein — **Bina Kisi Limit ya Error ke!**")
 
 if "video_library" not in st.session_state:
     st.session_state.video_library = []
@@ -30,7 +28,7 @@ with st.sidebar:
 
 clips_map = {"5 Seconds (1 Scene)": 1, "10 Seconds (2 Scenes)": 2, "15 Seconds (3 Scenes)": 3, "30 Seconds (6 Scenes)": 6, "60 Seconds (12 Scenes)": 12}
 styles_map = {
-    "👑 Disney / Pixar 3D Princess (Ultra Cute)": "masterpiece 3D Disney Pixar animation style, ultra cute character, big sparkling expressive eyes, intricate royal dress, magical fairy tale lighting, Unreal Engine 5 render, 8k",
+    "👑 Disney / Pixar 3D Princess (Ultra Cute)": "3D Disney Pixar animation style, ultra cute character, big sparkling expressive eyes, intricate royal dress, magical fairy tale lighting, Unreal Engine 5 render, 8k",
     "✨ Magical Fairy Tale 3D Movie": "enchanted 3D fantasy movie render, DreamWorks and Disney style, glowing magic particles, dreamy vibrant colors, 8k",
     "🌸 Studio Ghibli / High-End Anime": "gorgeous Makoto Shinkai and Studio Ghibli anime movie scene, shimmering golden light, expressive eyes, 4k",
     "🎥 Ultra Realistic 4K Cinematic": "photorealistic 8k cinema shot, dramatic golden hour lighting, shallow depth of field, hyper detailed",
@@ -43,7 +41,15 @@ num_scenes = clips_map[dur]
 sec_lbl = dur.split(" ")
 w, h = dims_map[rat]
 
-# Smooth Cinema Motion (Zoom In / Zoom Out / Pan) banane wala engine
+# Unlimited Free Disney Image Generator (No API Key, No Quota Limit!)
+def generate_free_scene(prompt_text, width, height, seed):
+    encoded = urllib.parse.quote(prompt_text)
+    url = f"https://pollinations.ai{encoded}?width={width}&height={height}&seed={seed}&nologo=true&model=flux"
+    resp = requests.get(url, timeout=60)
+    resp.raise_for_status()
+    return Image.open(io.BytesIO(resp.content)).convert("RGB")
+
+# Smooth Cinema Camera Motion Engine
 def create_motion_clip(pil_img, duration=5.0, mode=0):
     base = pil_img.resize((int(w * 1.18), int(h * 1.18)), Image.Resampling.LANCZOS)
     arr = np.array(base)
@@ -58,7 +64,7 @@ def create_motion_clip(pil_img, duration=5.0, mode=0):
             x1, y1 = (bw - nw) // 2, (bh - nh) // 2
             crop = arr[y1:y1+nh, x1:x1+nw]
             return np.array(Image.fromarray(crop).resize((w, h), Image.Resampling.BILINEAR))
-        elif mode % 3 == 1:  # Smooth Pan Left to Right
+        elif mode % 3 == 1:  # Smooth Pan
             dx = int(max_dx * p)
             dy = max_dy // 2
             return arr[dy:dy+h, dx:dx+w]
@@ -79,12 +85,11 @@ with t1:
         bar = st.progress(0)
         msg = st.empty()
         try:
-            client = InferenceClient(api_key=API_KEY) if API_KEY else InferenceClient()
             clips = []
             for i in range(num_scenes):
                 msg.info(f"🎨 Scene {i+1}/{num_scenes} ban raha hai...")
                 full_p = f"{txt}, {angles[i % 4]}, {styles_map[sty]}"
-                img = client.text_to_image(full_p, model="black-forest-labs/FLUX.1-schnell")
+                img = generate_free_scene(full_p, w, h, seed=100 + i * 17)
                 clips.append(create_motion_clip(img, duration=5.0, mode=i))
                 bar.progress((i + 1) / num_scenes)
 
@@ -103,7 +108,7 @@ with t1:
             st.video(vid)
             st.download_button("⬇️ Download MP4", vid, f"disney_{datetime.now().strftime('%H%M%S')}.mp4", "video/mp4", key="d1")
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Error aaya hai: {e}")
 
 with t2:
     up = st.file_uploader("Apni Tasveer Upload Karein:", type=["jpg", "jpeg", "png"])
@@ -125,7 +130,7 @@ with t2:
             st.video(vid)
             st.download_button("⬇️ Download MP4", vid, f"img_{datetime.now().strftime('%H%M%S')}.mp4", "video/mp4", key="d2")
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Error aaya hai: {e}")
 
 with t3:
     if not st.session_state.video_library: st.info("Abhi koi video nahi bani.")
