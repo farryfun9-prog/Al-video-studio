@@ -249,7 +249,7 @@ with tab2:
                         improve_texture_flag=True,
                         api_name="/image_to_video"
                     )
-                                        clip_path = result["video"] if isinstance(result, dict) else result
+                    clip_path = result["video"] if isinstance(result, dict) else result
                     temp_files.append(clip_path)
                     progress_bar.progress((i + 1) / num_clips)
                 
