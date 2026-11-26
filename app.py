@@ -9,10 +9,24 @@ from moviepy.editor import VideoFileClip, concatenate_videoclips
 st.set_page_config(page_title="AI Disney & Video Studio Pro", page_icon="👑", layout="centered")
 
 st.title("👑 AI Disney & Video Studio Pro")
-st.write("Pixar/Disney jaisi khoobsurat **3D Cartoon** aur **10s se 60s** tak ki videos banayein!")
+st.write("Pixar/Disney jaisi khoobsurat **3D Cartoon** aur **5s se 60s** tak ki videos bilkul FREE banayein!")
 
 if "video_library" not in st.session_state:
     st.session_state.video_library = []
+
+# Helper function jo har halat mein asli .mp4 file ka rasta nikalegi (No Tuple Error!)
+def extract_video_path(res):
+    if isinstance(res, str):
+        return res
+    if isinstance(res, dict):
+        return res.get("video") or res.get("url") or list(res.values())[0]
+    if isinstance(res, (list, tuple)):
+        for item in res:
+            found = extract_video_path(item)
+            if isinstance(found, str) and (found.endswith(".mp4") or os.path.exists(found)):
+                return found
+        return extract_video_path(res[0])
+    return str(res)
 
 # --- SIDEBAR SETTINGS ---
 with st.sidebar:
@@ -21,13 +35,13 @@ with st.sidebar:
     duration_choice = st.selectbox(
         "⏱️ Video Length (Duration):",
         [
-            "5 Seconds (Fast Preview - 1 Clip)",
+            "5 Seconds (Fast - 1 Scene)",
             "10 Seconds (2 Scenes Merged)",
             "15 Seconds (3 Scenes Merged)",
             "30 Seconds (6 Scenes Merged)",
             "60 Seconds (12 Scenes - Full Story)"
         ],
-        index=1
+        index=0
     )
     
     ratio_choice = st.selectbox(
@@ -55,7 +69,7 @@ with st.sidebar:
     st.info(f"📚 Library mein mehfooz videos: **{len(st.session_state.video_library)}**")
 
 clips_map = {
-    "5 Seconds (Fast Preview - 1 Clip)": 1,
+    "5 Seconds (Fast - 1 Scene)": 1,
     "10 Seconds (2 Scenes Merged)": 2,
     "15 Seconds (3 Scenes Merged)": 3,
     "30 Seconds (6 Scenes Merged)": 6,
@@ -124,7 +138,7 @@ with tab1:
     )
     
     if st.button("High-Quality Video Banayein ✨", key="btn_text"):
-        if not text_prompt:
+        if not text_prompt.strip():
             st.warning("⚠️ Meharbani karke pehle prompt likhein.")
         else:
             progress_bar = st.progress(0)
@@ -135,7 +149,7 @@ with tab1:
                 client = Client("Lightricks/ltx-video-distilled")
                 
                 for i in range(num_clips):
-                    status_text.info(f"🎬 Scene {i + 1} of {num_clips} ban raha hai... (Har scene mein ~40 sec lagte hain)")
+                    status_text.info(f"🎬 Scene {i + 1} of {num_clips} ban raha hai... (Thora intezar karein)")
                     variation = scene_variations[i % len(scene_variations)]
                     full_prompt = f"{text_prompt}, {variation}, {selected_style_text}"
                     
@@ -156,11 +170,11 @@ with tab1:
                         api_name="/text_to_video"
                     )
                     
-                    clip_path = result["video"] if isinstance(result, dict) else result
+                    clip_path = extract_video_path(result)
                     temp_files.append(clip_path)
                     progress_bar.progress((i + 1) / num_clips)
                 
-                status_text.info("🎞️ Saare scenes ko jor kar final HD MP4 video tayyar ki ja rahi hai...")
+                status_text.info("🎞️ Final HD MP4 video tayyar ki ja rahi hai...")
                 
                 if len(temp_files) == 1:
                     final_video_path = temp_files[0]
@@ -196,7 +210,7 @@ with tab1:
                     key="dl_text_now"
                 )
             except Exception as e:
-                st.error(f"Free server abhi busy hai, thori der baad dubara koshish karein. Details: {e}")
+                st.error(f"Free server par abhi rush zyada hai, 30 second baad dubara button dabayein. Details: {e}")
 
 # --- TAB 2: IMAGE TO VIDEO ---
 with tab2:
@@ -226,89 +240,3 @@ with tab2:
                     image.convert("RGB").resize((width, height)).save(tmp.name)
                     temp_img_path = tmp.name
                 
-                client = Client("Lightricks/ltx-video-distilled")
-                
-                for i in range(num_clips):
-                    status_text.info(f"🎬 Part {i + 1} of {num_clips} animate ho raha hai...")
-                    variation = scene_variations[i % len(scene_variations)]
-                    full_img_prompt = f"{img_prompt}, {variation}, {selected_style_text}"
-                    
-                    result = client.predict(
-                        prompt=full_img_prompt,
-                        negative_prompt="worst quality, blurry, jittery, distorted face, ugly, pixelated",
-                        input_image_filepath=handle_file(temp_img_path),
-                        input_video_filepath=None,
-                        height_ui=height,
-                        width_ui=width,
-                        mode="image-to-video",
-                        duration_ui=5.0,
-                        ui_frames_to_use=25,
-                        seed_ui=100 + i,
-                        randomize_seed=True,
-                        ui_guidance_scale=4.5,
-                        improve_texture_flag=True,
-                        api_name="/image_to_video"
-                    )
-                    raw_res = result[0] if isinstance(result, (list, tuple)) else result
-                    clip_path = raw_res["video"] if isinstance(raw_res, dict) else raw_res
-
-                    temp_files.append(clip_path)
-                    progress_bar.progress((i + 1) / num_clips)
-                
-                os.remove(temp_img_path)
-                status_text.info("🎞️ Saare parts ko jor kar final HD MP4 video banayi ja rahi hai...")
-                
-                if len(temp_files) == 1:
-                    final_video_path = temp_files[0]
-                else:
-                    clips = [VideoFileClip(p) for p in temp_files]
-                    final_clip = concatenate_videoclips(clips, method="compose")
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as out_tmp:
-                        final_video_path = out_tmp.name
-                    final_clip.write_videofile(final_video_path, codec="libx264", audio=False, logger=None)
-                    for c in clips:
-                        c.close()
-                
-                with open(final_video_path, "rb") as f:
-                    video_bytes = f.read()
-                
-                st.session_state.video_library.insert(0, {
-                    "title": img_prompt[:40] + "...",
-                    "type": f"Image ({seconds_label}s)",
-                    "style": style_choice,
-                    "ratio": ratio_choice,
-                    "time": datetime.now().strftime("%I:%M %p"),
-                    "video": video_bytes
-                })
-                
-                status_text.empty()
-                st.success(f"🎉 Image se {seconds_label} second ki HD video ban gayi hai!")
-                st.video(video_bytes)
-                st.download_button(
-                    label="⬇️ Download HD MP4 Video",
-                    data=video_bytes,
-                    file_name=f"disney_img_video_{datetime.now().strftime('%H%M%S')}.mp4",
-                    mime="video/mp4",
-                    key="dl_img_now"
-                )
-            except Exception as e:
-                st.error(f"Free server abhi busy hai, thori der baad dubara koshish karein. Details: {e}")
-
-# --- TAB 3: MERI VIDEO LIBRARY ---
-with tab3:
-    st.subheader("📚 Aapki Banayi Hui Videos")
-    if len(st.session_state.video_library) == 0:
-        st.info("Abhi tak koi video nahi banayi gayi. Pehle koi video banayein, woh yahan khud save ho jayegi!")
-    else:
-        for idx, item in enumerate(st.session_state.video_library):
-            with st.container(border=True):
-                st.markdown(f"**🎬 {idx + 1}. {item['title']}**")
-                st.caption(f"Type: {item['type']} | Style: {item['style']} | Ratio: {item['ratio']} | Time: {item['time']}")
-                st.video(item["video"])
-                st.download_button(
-                    label="⬇️ Download MP4",
-                    data=item["video"],
-                    file_name=f"library_video_{idx + 1}.mp4",
-                    mime="video/mp4",
-                    key=f"lib_dl_{idx}"
-                )
