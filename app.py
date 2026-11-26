@@ -234,4 +234,19 @@ with tab2:
                     full_img_prompt = f"{img_prompt}, {variation}, {selected_style_text}"
                     
                     result = client.predict(
-                        prompt=full_img_prompt,)
+                        prompt=full_img_prompt,
+                        negative_prompt="worst quality, blurry, jittery, distorted face, ugly, pixelated",
+                        input_image_filepath=handle_file(temp_img_path),
+                        input_video_filepath=None,
+                        height_ui=height,
+                        width_ui=width,
+                        mode="image-to-video",
+                        duration_ui=5.0,
+                        ui_frames_to_use=25,
+                        seed_ui=100 + i,
+                        randomize_seed=True,
+                        ui_guidance_scale=4.5,
+                        improve_texture_flag=True,
+                        api_name="/image_to_video"
+                    )
+
