@@ -18,7 +18,6 @@ if "video_library" not in st.session_state:
 with st.sidebar:
     st.header("⚙️ Studio Settings")
     
-    # 1. Video Length (5s se 60s tak)
     duration_choice = st.selectbox(
         "⏱️ Video Length (Duration):",
         [
@@ -31,7 +30,6 @@ with st.sidebar:
         index=1
     )
     
-    # 2. Aspect Ratio (4 Options)
     ratio_choice = st.selectbox(
         "📐 Video Ratio:",
         [
@@ -42,7 +40,6 @@ with st.sidebar:
         ]
     )
     
-    # 3. Cartoon & Video Styles (Disney / Pixar Special)
     style_choice = st.selectbox(
         "🎨 Video Style Chunein:",
         [
@@ -57,7 +54,6 @@ with st.sidebar:
     st.markdown("---")
     st.info(f"📚 Library mein mehfooz videos: **{len(st.session_state.video_library)}**")
 
-# Duration ke mutabiq clips ki ginti
 clips_map = {
     "5 Seconds (Fast Preview - 1 Clip)": 1,
     "10 Seconds (2 Scenes Merged)": 2,
@@ -68,7 +64,6 @@ clips_map = {
 num_clips = clips_map[duration_choice]
 seconds_label = duration_choice.split(" ")[0]
 
-# Har scene mein camera angle ki tabdeeli
 scene_variations = [
     "wide establishing shot, magical atmosphere",
     "close up portrait shot, expressive big eyes, smiling",
@@ -78,7 +73,6 @@ scene_variations = [
     "dynamic camera angle, soft golden hour glow"
 ]
 
-# High-Quality Disney/Pixar Style Prompts
 style_prompts = {
     "👑 Disney / Pixar 3D Princess (Ultra Cute)": (
         "masterpiece 3D Disney Pixar animation style, ultra cute character design, "
@@ -236,3 +230,8 @@ with tab2:
                 
                 for i in range(num_clips):
                     status_text.info(f"🎬 Part {i + 1} of {num_clips} animate ho raha hai...")
+                    variation = scene_variations[i % len(scene_variations)]
+                    full_img_prompt = f"{img_prompt}, {variation}, {selected_style_text}"
+                    
+                    result = client.predict(
+                        prompt=full_img_prompt,
