@@ -1,28 +1,23 @@
 import streamlit as st
-from huggingface_hub import InferenceClient
+from gradio_client import Client, handle_file
 from PIL import Image
-import io
+import tempfile
 import os
+import shutil
 from datetime import datetime
 
-# Page ki settings
 st.set_page_config(page_title="AI Video Studio Pro", page_icon="🎬", layout="centered")
 
 st.title("🎬 AI Video Generator Studio Pro")
-st.write("Apni pasand ke **Style** aur **Ratio** mein FREE AI videos banayein!")
+st.write("Apni pasand ke **Style** aur **Ratio** mein bilkul FREE AI videos banayein!")
 
-# Secrets se API key uthana
-API_KEY = os.environ.get("HF_TOKEN") or st.secrets.get("HF_TOKEN", "")
-
-# Video Library ko session mein mehfooz rakhna
 if "video_library" not in st.session_state:
     st.session_state.video_library = []
 
-# --- SIDEBAR SETTINGS (Ratio & Style) ---
+# --- SIDEBAR SETTINGS ---
 with st.sidebar:
     st.header("⚙️ Video Settings")
     
-    # 1. Aspect Ratio (4 Options)
     ratio_choice = st.selectbox(
         "📐 Video Ratio Chunein:",
         [
@@ -33,12 +28,11 @@ with st.sidebar:
         ]
     )
     
-    # 2. Style Selector (Cartoon aur doosre styles)
     style_choice = st.selectbox(
         "🎨 Video Style Chunein:",
         [
-            "Realistic / Cinematic",
             "3D Cartoon (Pixar / Disney Style)",
+            "Realistic / Cinematic",
             "Anime / Japanese Animation",
             "2D Classic Cartoon",
             "Claymation / Toy Style"
@@ -48,7 +42,6 @@ with st.sidebar:
     st.markdown("---")
     st.info(f"📚 Library mein mehfooz videos: **{len(st.session_state.video_library)}**")
 
-# Style aur Ratio ke mutabiq prompt aur dimensions set karna
 style_prompts = {
     "Realistic / Cinematic": "photorealistic, ultra detailed, 4k cinematic lighting, real life",
     "3D Cartoon (Pixar / Disney Style)": "3D animated movie style, Pixar and Disney animation, cute vibrant colors, smooth 3D render",
@@ -58,8 +51,8 @@ style_prompts = {
 }
 
 ratio_dimensions = {
-    "16:9 (YouTube / Landscape)": (768, 432),
-    "9:16 (TikTok / Reels / Shorts)": (432, 768),
+    "16:9 (YouTube / Landscape)": (768, 448),
+    "9:16 (TikTok / Reels / Shorts)": (448, 768),
     "1:1 (Instagram Square)": (512, 512),
     "4:3 (Classic TV)": (640, 480)
 }
@@ -67,7 +60,6 @@ ratio_dimensions = {
 selected_style_text = style_prompts[style_choice]
 width, height = ratio_dimensions[ratio_choice]
 
-# App ke 3 Tabs: Text-to-Video, Image-to-Video, aur Library
 tab1, tab2, tab3 = st.tabs([
     "📝 Text se Video",
     "🖼️ Image se Video",
@@ -81,25 +73,39 @@ with tab1:
     
     text_prompt = st.text_area(
         "Video Prompt (English mein likhein):",
-        placeholder="A cute little rabbit jumping in a magical forest..."
+        value="A cute little baby panda eating bamboo in a magical glowing forest, happy smile, cinematic lighting"
     )
     
     if st.button("Text se Video Banayein 🎥", key="btn_text"):
-        if not API_KEY:
-            st.error("⚠️ API Key missing hai! App settings mein HF_TOKEN add karein.")
-        elif not text_prompt:
+        if not text_prompt:
             st.warning("⚠️ Meharbani karke pehle prompt likhein.")
         else:
             full_prompt = f"{text_prompt}, {selected_style_text}"
-            with st.spinner(f"{style_choice} mein video ban rahi hai... (1-2 minute lag sakte hain)"):
+            with st.spinner(f"{style_choice} mein video ban rahi hai... (1 se 2 minute intezar karein)"):
                 try:
-                    client = InferenceClient(provider="hf-inference", api_key=API_KEY)
-                    video_bytes = client.text_to_video(
-                        full_prompt,
-                        model="Lightricks/LTX-Video"
+                    # Free Public LTX-Video Server
+                    client = Client("Lightricks/ltx-video-distilled")
+                    result = client.predict(
+                        prompt=full_prompt,
+                        negative_prompt="worst quality, blurry, jittery, distorted",
+                        input_image_filepath=None,
+                        input_video_filepath=None,
+                        height_ui=height,
+                        width_ui=width,
+                        mode="text-to-video",
+                        duration_ui=2.0,
+                        ui_frames_to_use=9,
+                        seed_ui=42,
+                        randomize_seed=True,
+                        ui_guidance_scale=3.0,
+                        improve_texture_flag=True,
+                        api_name="/text_to_video"
                     )
                     
-                    # Library mein save karna
+                    video_path = result[0]["video"] if isinstance(result[0], dict) else result[0]
+                    with open(video_path, "rb") as f:
+                        video_bytes = f.read()
+                    
                     st.session_state.video_library.insert(0, {
                         "title": text_prompt[:40] + "...",
                         "type": "Text-to-Video",
@@ -119,7 +125,7 @@ with tab1:
                         key="dl_text_now"
                     )
                 except Exception as e:
-                    st.error(f"Error aaya hai: {e}")
+                    st.error(f"Free server abhi busy hai, 1 minute baad dubara click karein. Details: {e}")
 
 # --- TAB 2: IMAGE TO VIDEO ---
 with tab2:
@@ -129,7 +135,7 @@ with tab2:
     uploaded_file = st.file_uploader("Tasveer chunein (JPG ya PNG):", type=["jpg", "jpeg", "png"])
     img_prompt = st.text_input(
         "Tasveer mein kya harkat honi chahiye? (English mein):",
-        placeholder="Smiling and waving hand, magical sparkles around..."
+        value="Smiling happily, gentle wind blowing hair, smooth camera zoom"
     )
     
     if uploaded_file is not None:
@@ -137,31 +143,43 @@ with tab2:
         st.image(image, caption="Upload ki gayi tasveer", width=300)
         
     if st.button("Image se Video Banayein 🎞️", key="btn_img"):
-        if not API_KEY:
-            st.error("⚠️ API Key missing hai! App settings mein HF_TOKEN add karein.")
-        elif uploaded_file is None:
+        if uploaded_file is None:
             st.warning("⚠️ Pehle koi tasveer upload karein.")
         else:
-            # Image ko selected ratio ke mutabiq resize karna
-            resized_image = image.convert("RGB").resize((width, height))
-            img_byte_arr = io.BytesIO()
-            resized_image.save(img_byte_arr, format='PNG')
-            img_bytes = img_byte_arr.getvalue()
-            
-            full_img_prompt = f"{img_prompt if img_prompt else 'smooth motion'}, {selected_style_text}"
-            
-            with st.spinner("Tasveer ko video mein badla ja raha hai... Thora intezar karein."):
+            full_img_prompt = f"{img_prompt}, {selected_style_text}"
+            with st.spinner("Tasveer ko video mein badla ja raha hai... (1-2 minute intezar karein)"):
                 try:
-                    client = InferenceClient(provider="hf-inference", api_key=API_KEY)
-                    video_bytes = client.image_to_video(
-                        image=img_bytes,
+                    # Tasveer ko temporary file mein save karna
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                        image.convert("RGB").resize((width, height)).save(tmp.name)
+                        temp_img_path = tmp.name
+                    
+                    client = Client("Lightricks/ltx-video-distilled")
+                    result = client.predict(
                         prompt=full_img_prompt,
-                        model="Wan-AI/Wan2.1-I2V-14B-480P"
+                        negative_prompt="worst quality, blurry, jittery, distorted",
+                        input_image_filepath=handle_file(temp_img_path),
+                        input_video_filepath=None,
+                        height_ui=height,
+                        width_ui=width,
+                        mode="image-to-video",
+                        duration_ui=2.0,
+                        ui_frames_to_use=9,
+                        seed_ui=42,
+                        randomize_seed=True,
+                        ui_guidance_scale=3.0,
+                        improve_texture_flag=True,
+                        api_name="/image_to_video"
                     )
                     
-                    # Library mein save karna
+                    video_path = result[0]["video"] if isinstance(result[0], dict) else result[0]
+                    with open(video_path, "rb") as f:
+                        video_bytes = f.read()
+                        
+                    os.remove(temp_img_path)
+                    
                     st.session_state.video_library.insert(0, {
-                        "title": img_prompt if img_prompt else "Image Animation",
+                        "title": img_prompt[:40] + "...",
                         "type": "Image-to-Video",
                         "style": style_choice,
                         "ratio": ratio_choice,
@@ -179,7 +197,7 @@ with tab2:
                         key="dl_img_now"
                     )
                 except Exception as e:
-                    st.error(f"Error aaya hai: {e}")
+                    st.error(f"Free server abhi busy hai, 1 minute baad dubara click karein. Details: {e}")
 
 # --- TAB 3: MERI VIDEO LIBRARY ---
 with tab3:
@@ -199,4 +217,3 @@ with tab3:
                     mime="video/mp4",
                     key=f"lib_dl_{idx}"
                 )
-
