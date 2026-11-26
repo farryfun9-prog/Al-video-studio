@@ -1,5 +1,5 @@
 streamlit
-huggingface_hub
+requests
 Pillow
 numpy
 moviepy==1.0.3
