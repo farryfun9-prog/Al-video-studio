@@ -249,3 +249,64 @@ with tab2:
                         improve_texture_flag=True,
                         api_name="/image_to_video"
                     )
+                                        clip_path = result["video"] if isinstance(result, dict) else result
+                    temp_files.append(clip_path)
+                    progress_bar.progress((i + 1) / num_clips)
+                
+                os.remove(temp_img_path)
+                status_text.info("🎞️ Saare parts ko jor kar final HD MP4 video banayi ja rahi hai...")
+                
+                if len(temp_files) == 1:
+                    final_video_path = temp_files[0]
+                else:
+                    clips = [VideoFileClip(p) for p in temp_files]
+                    final_clip = concatenate_videoclips(clips, method="compose")
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as out_tmp:
+                        final_video_path = out_tmp.name
+                    final_clip.write_videofile(final_video_path, codec="libx264", audio=False, logger=None)
+                    for c in clips:
+                        c.close()
+                
+                with open(final_video_path, "rb") as f:
+                    video_bytes = f.read()
+                
+                st.session_state.video_library.insert(0, {
+                    "title": img_prompt[:40] + "...",
+                    "type": f"Image ({seconds_label}s)",
+                    "style": style_choice,
+                    "ratio": ratio_choice,
+                    "time": datetime.now().strftime("%I:%M %p"),
+                    "video": video_bytes
+                })
+                
+                status_text.empty()
+                st.success(f"🎉 Image se {seconds_label} second ki HD video ban gayi hai!")
+                st.video(video_bytes)
+                st.download_button(
+                    label="⬇️ Download HD MP4 Video",
+                    data=video_bytes,
+                    file_name=f"disney_img_video_{datetime.now().strftime('%H%M%S')}.mp4",
+                    mime="video/mp4",
+                    key="dl_img_now"
+                )
+            except Exception as e:
+                st.error(f"Free server abhi busy hai, thori der baad dubara koshish karein. Details: {e}")
+
+# --- TAB 3: MERI VIDEO LIBRARY ---
+with tab3:
+    st.subheader("📚 Aapki Banayi Hui Videos")
+    if len(st.session_state.video_library) == 0:
+        st.info("Abhi tak koi video nahi banayi gayi. Pehle koi video banayein, woh yahan khud save ho jayegi!")
+    else:
+        for idx, item in enumerate(st.session_state.video_library):
+            with st.container(border=True):
+                st.markdown(f"**🎬 {idx + 1}. {item['title']}**")
+                st.caption(f"Type: {item['type']} | Style: {item['style']} | Ratio: {item['ratio']} | Time: {item['time']}")
+                st.video(item["video"])
+                st.download_button(
+                    label="⬇️ Download MP4",
+                    data=item["video"],
+                    file_name=f"library_video_{idx + 1}.mp4",
+                    mime="video/mp4",
+                    key=f"lib_dl_{idx}"
+                )
