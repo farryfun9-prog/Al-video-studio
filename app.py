@@ -41,7 +41,7 @@ num_scenes = clips_map[dur]
 sec_lbl = dur.split(" ")
 w, h = dims_map[rat]
 
-# Unlimited Free Disney Image Generator (No API Key, No Quota Limit!)
+url = f"https://pollinations.ai{encoded}?width={width}&height={height}&seed={seed}&nologo=true&model=flux"
 def generate_free_scene(prompt_text, width, height, seed):
     encoded = urllib.parse.quote(prompt_text)
     url = f"https://pollinations.ai{encoded}?width={width}&height={height}&seed={seed}&nologo=true&model=flux"
