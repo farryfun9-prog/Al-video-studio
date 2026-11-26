@@ -2,3 +2,4 @@ streamlit
 gradio_client
 Pillow
 requests
+moviepy==1.0.3
