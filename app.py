@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 
-st.set_page_config(page_title="AI Cartoon & Video Studio Pro", page_icon="👑", layout="centered")
+st.set_page_config(page_title="AI Disney & Video Studio Pro", page_icon="👑", layout="centered")
 
 st.title("👑 AI Disney & Video Studio Pro")
 st.write("Pixar/Disney jaisi khoobsurat **3D Cartoon** aur **10s se 60s** tak ki videos banayein!")
@@ -18,7 +18,7 @@ if "video_library" not in st.session_state:
 with st.sidebar:
     st.header("⚙️ Studio Settings")
     
-    # 1. Video Length (10 sec se 60 sec tak)
+    # 1. Video Length (5s se 60s tak)
     duration_choice = st.selectbox(
         "⏱️ Video Length (Duration):",
         [
@@ -31,7 +31,7 @@ with st.sidebar:
         index=1
     )
     
-    # 2. Aspect Ratio
+    # 2. Aspect Ratio (4 Options)
     ratio_choice = st.selectbox(
         "📐 Video Ratio:",
         [
@@ -66,8 +66,9 @@ clips_map = {
     "60 Seconds (12 Scenes - Full Story)": 12
 }
 num_clips = clips_map[duration_choice]
+seconds_label = duration_choice.split(" ")[0]
 
-# Har scene mein thori camera variation taake video boring na lage
+# Har scene mein camera angle ki tabdeeli
 scene_variations = [
     "wide establishing shot, magical atmosphere",
     "close up portrait shot, expressive big eyes, smiling",
@@ -183,7 +184,7 @@ with tab1:
                 
                 st.session_state.video_library.insert(0, {
                     "title": text_prompt[:40] + "...",
-                    "type": f"Text ({duration_choice.split(' ')[0]}s)",
+                    "type": f"Text ({seconds_label}s)",
                     "style": style_choice,
                     "ratio": ratio_choice,
                     "time": datetime.now().strftime("%I:%M %p"),
@@ -191,7 +192,7 @@ with tab1:
                 })
                 
                 status_text.empty()
-                st.success(f"🎉 Mubarak ho! Aapki {duration_choice.split(' ')[0]} second ki HD Cartoon Video tayyar hai!")
+                st.success(f"🎉 Mubarak ho! Aapki {seconds_label} second ki HD Cartoon Video tayyar hai!")
                 st.video(video_bytes)
                 st.download_button(
                     label="⬇️ Download HD MP4 Video",
@@ -235,4 +236,3 @@ with tab2:
                 
                 for i in range(num_clips):
                     status_text.info(f"🎬 Part {i + 1} of {num_clips} animate ho raha hai...")
-                    variation = scene_variations[i % len(scene_variations)]
