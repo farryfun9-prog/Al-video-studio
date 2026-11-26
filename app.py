@@ -249,4 +249,3 @@ with tab2:
                         improve_texture_flag=True,
                         api_name="/image_to_video"
                     )
-
